@@ -60,3 +60,17 @@ export async function exchangeDiagnosticCode(code) {
   if (!res.ok) throw new Error(data.detail || 'Exchange failed');
   return data;
 }
+
+/**
+ * Check whether the current browser session is a diagnostic session.
+ * The backend reads the ``staff_access_token`` session cookie and returns
+ * the staff user's info if valid.  Returns null when no diagnostic session
+ * is active.
+ */
+export async function getDiagnosticInfo() {
+  const res = await request('GET', '/diagnostic-info/');
+  if (res.status === 404) return null;
+  const data = await res.json();
+  if (!res.ok) return null;
+  return data;
+}

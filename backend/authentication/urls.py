@@ -7,6 +7,7 @@ from .views import (
     UserListView,
     DiagnosticLoginView,
     ExchangeCodeView,
+    DiagnosticInfoView,
 )
 
 urlpatterns = [
@@ -17,4 +18,5 @@ urlpatterns = [
     path('users/', UserListView.as_view(), name='auth-users'),
     path('diagnostic-login/', DiagnosticLoginView.as_view(), name='auth-diagnostic-login'),
     path('exchange/', ExchangeCodeView.as_view(), name='auth-exchange'),
+    path('diagnostic-info/', DiagnosticInfoView.as_view(), name='auth-diagnostic-info'),
 ]

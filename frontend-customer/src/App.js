@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
-import { getMe, refreshToken, exchangeDiagnosticCode } from './api';
+import { getMe, refreshToken, exchangeDiagnosticCode, getDiagnosticInfo } from './api';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -44,6 +44,18 @@ export default function App() {
         me = null;
       }
       setUser(me);
+
+      // If a customer session is active, check whether it is a diagnostic
+      // session (staff_access_token session cookie present and valid).
+      // This restores the diagnostic banner after a page refresh within the
+      // same browser session.
+      if (me) {
+        const diagInfo = await getDiagnosticInfo();
+        if (diagInfo) {
+          setStaff(diagInfo.staff);
+        }
+      }
+
       setLoading(false);
     }
     init();

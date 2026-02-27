@@ -8,6 +8,10 @@ class DiagnosticExchangeCode(models.Model):
     Short-lived code used to transfer diagnostic tokens from the intranet
     frontend to the customer frontend. A staff member uses this to log in
     as a customer for diagnostic purposes.
+
+    Both the customer's tokens and the staff member's access token are stored
+    so that the customer frontend can authenticate as the customer while also
+    carrying the staff member's JWT for server-side audit logging.
     """
     code = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     staff_user = models.ForeignKey(
@@ -18,6 +22,9 @@ class DiagnosticExchangeCode(models.Model):
     )
     customer_access_token = models.TextField()
     customer_refresh_token = models.TextField()
+    # Staff member's access token so the customer frontend can also carry
+    # the staff identity as a session cookie for audit purposes.
+    staff_access_token = models.TextField(default='')
     created_at = models.DateTimeField(auto_now_add=True)
     used = models.BooleanField(default=False)
 

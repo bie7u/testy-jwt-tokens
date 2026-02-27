@@ -84,20 +84,21 @@ export default function Dashboard({ user, staff, onLogout }) {
         <div style={styles.diagnostic}>
           <span style={styles.diagIcon}>🔍</span>
           <span style={styles.diagText}>
-            <strong>Diagnostic session</strong> — You are viewing this portal as customer{' '}
-            <strong>{user.username}</strong>. This session was initiated by staff member{' '}
-            <strong>{staff.username}</strong> ({staff.first_name} {staff.last_name}).
+            <strong>Sesja diagnostyczna</strong> — Przeglądasz portal jako klient{' '}
+            <strong>{user.username}</strong>. Sesję zainicjował pracownik{' '}
+            <strong>{staff.username}</strong> ({staff.first_name} {staff.last_name}).{' '}
+            Sesja wygaśnie po zamknięciu karty.
           </span>
-          <span style={styles.diagBadge}>DIAGNOSTIC</span>
+          <span style={styles.diagBadge}>DIAGNOSTYKA</span>
         </div>
       )}
 
       <div style={styles.topbar}>
-        <span style={styles.brand}>🛍️ CUSTOMER PORTAL</span>
+        <span style={styles.brand}>🛍️ PORTAL KLIENTA</span>
         <div style={styles.userInfo}>
           <span style={styles.username}>👤 {user.first_name || user.username}</span>
           <button style={styles.logoutBtn} onClick={handleLogout}>
-            Sign out
+            Wyloguj
           </button>
         </div>
       </div>
@@ -105,38 +106,39 @@ export default function Dashboard({ user, staff, onLogout }) {
       <div style={styles.content}>
         <div style={styles.card}>
           <h2 style={styles.greeting}>
-            Welcome, {user.first_name || user.username}! 👋
+            Witaj, {user.first_name || user.username}! 👋
           </h2>
 
-          <div style={styles.infoLabel}>Username</div>
+          <div style={styles.infoLabel}>Nazwa użytkownika</div>
           <div style={styles.infoValue}>{user.username}</div>
 
           <div style={styles.infoLabel}>Email</div>
           <div style={styles.infoValue}>{user.email || '—'}</div>
 
-          <div style={styles.infoLabel}>Full Name</div>
+          <div style={styles.infoLabel}>Imię i nazwisko</div>
           <div style={styles.infoValue}>
             {[user.first_name, user.last_name].filter(Boolean).join(' ') || '—'}
           </div>
 
           {isDiagnostic && (
             <div style={styles.tokenSection}>
-              <div style={styles.tokenTitle}>🔑 Diagnostic Session Tokens</div>
+              <div style={styles.tokenTitle}>🔑 Tokeny sesji diagnostycznej</div>
               <div style={styles.tokenHint}>
-                This diagnostic session has two JWT tokens active in HTTP-only cookies:
+                W tej sesji aktywne są dwa tokeny JWT w ciasteczkach sesji (wygasają po zamknięciu karty):
               </div>
               <ul style={{ margin: '8px 0 0', paddingLeft: 18, color: '#827717', fontSize: 12 }}>
                 <li>
-                  <strong>Customer token</strong> — identifies user <em>{user.username}</em> (ID:{' '}
-                  {user.id})
+                  <strong>Token klienta</strong> (<code>access_token</code>) — identyfikuje użytkownika{' '}
+                  <em>{user.username}</em> (ID: {user.id}); używany przez backend do autoryzacji żądań
                 </li>
                 <li>
-                  <strong>Staff reference</strong> — session initiated by <em>{staff.username}</em>{' '}
-                  (ID: {staff.id})
+                  <strong>Token pracownika</strong> (<code>staff_access_token</code>) — identyfikuje{' '}
+                  <em>{staff.username}</em> (ID: {staff.id}); backend może go odczytać z każdego żądania
+                  w celu logowania akcji audytowych
                 </li>
               </ul>
               <div style={{ marginTop: 8, color: '#9e9d24', fontSize: 12 }}>
-                Both identities are tracked server-side for audit and action logging.
+                Oba ciasteczka są sesyjne — nie mają daty wygaśnięcia i znikną po zamknięciu karty przeglądarki.
               </div>
             </div>
           )}

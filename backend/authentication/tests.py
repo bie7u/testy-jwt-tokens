@@ -171,6 +171,35 @@ class DiagnosticLoginTests(TestCase):
         self.assertTrue(data['diagnostic'])
         self.assertIn('access_token', exchange_resp.cookies)
         self.assertIn('refresh_token', exchange_resp.cookies)
+        # Staff token cookie must also be set
+        self.assertIn('staff_access_token', exchange_resp.cookies)
+
+    def test_exchange_code_sets_session_cookies(self):
+        """Diagnostic cookies must be session cookies (no max_age)."""
+        self._login_as_staff()
+        diag_resp = self.client.post(
+            reverse('auth-diagnostic-login'),
+            data=json.dumps({'customer_id': self.customer.id}),
+            content_type='application/json',
+        )
+        code = diag_resp.json()['code']
+
+        from django.test import Client
+        fresh_client = Client()
+        exchange_resp = fresh_client.post(
+            reverse('auth-exchange'),
+            data=json.dumps({'code': code}),
+            content_type='application/json',
+        )
+        self.assertEqual(exchange_resp.status_code, 200)
+        # Session cookies have max_age == '' (not set), distinguishing them
+        # from persistent cookies where max_age is a positive integer.
+        for cookie_name in ('access_token', 'refresh_token', 'staff_access_token'):
+            max_age = exchange_resp.cookies[cookie_name]['max-age']
+            self.assertEqual(
+                max_age, '',
+                msg=f"{cookie_name} should be a session cookie (no max-age), got {max_age!r}",
+            )
 
     def test_exchange_code_is_single_use(self):
         self._login_as_staff()
@@ -196,6 +225,83 @@ class DiagnosticLoginTests(TestCase):
         )
         self.assertEqual(r1.status_code, 200)
         self.assertEqual(r2.status_code, 400)  # second use should fail
+
+
+class DiagnosticInfoViewTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username='staff', password='pass', is_staff=True
+        )
+        self.customer = User.objects.create_user(
+            username='customer', password='pass', is_staff=False
+        )
+
+    def _do_diagnostic_exchange(self):
+        """Login as staff, create a diagnostic code and exchange it. Returns the exchange client."""
+        staff_client = self.client
+        staff_client.post(
+            reverse('auth-login'),
+            data=json.dumps({'username': 'staff', 'password': 'pass'}),
+            content_type='application/json',
+        )
+        diag_resp = staff_client.post(
+            reverse('auth-diagnostic-login'),
+            data=json.dumps({'customer_id': self.customer.id}),
+            content_type='application/json',
+        )
+        code = diag_resp.json()['code']
+
+        from django.test import Client
+        customer_client = Client()
+        customer_client.post(
+            reverse('auth-exchange'),
+            data=json.dumps({'code': code}),
+            content_type='application/json',
+        )
+        return customer_client
+
+    def test_diagnostic_info_returns_staff(self):
+        """After exchange, GET /diagnostic-info/ returns the staff user's info."""
+        customer_client = self._do_diagnostic_exchange()
+        resp = customer_client.get(reverse('auth-diagnostic-info'))
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['staff']['username'], 'staff')
+        self.assertTrue(data['diagnostic'])
+
+    def test_diagnostic_info_without_cookie_returns_404(self):
+        """Without a staff_access_token cookie there is no diagnostic session."""
+        from django.test import Client
+        fresh_client = Client()
+        resp = fresh_client.get(reverse('auth-diagnostic-info'))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_regular_login_does_not_set_staff_cookie(self):
+        """A regular (non-diagnostic) login must NOT set the staff_access_token cookie."""
+        resp = self.client.post(
+            reverse('auth-login'),
+            data=json.dumps({'username': 'customer', 'password': 'pass'}),
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn('staff_access_token', resp.cookies)
+
+    def test_regular_login_sets_persistent_cookies(self):
+        """Regular login cookies must carry an explicit max_age (persistent)."""
+        resp = self.client.post(
+            reverse('auth-login'),
+            data=json.dumps({'username': 'customer', 'password': 'pass'}),
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        for cookie_name in ('access_token', 'refresh_token'):
+            max_age = resp.cookies[cookie_name]['max-age']
+            self.assertNotEqual(
+                max_age, '',
+                msg=f"Regular login {cookie_name} should be persistent (has max-age), got {max_age!r}",
+            )
+            self.assertGreater(int(max_age), 0)
+
 
 
 class RefreshTokenViewTests(TestCase):

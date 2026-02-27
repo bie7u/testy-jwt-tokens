@@ -11,10 +11,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .models import DiagnosticExchangeCode
 from .serializers import UserSerializer, LoginSerializer, DiagnosticLoginSerializer
-from .utils import get_tokens_for_user, set_auth_cookies, clear_auth_cookies
+from .utils import get_tokens_for_user, set_auth_cookies, set_diagnostic_cookies, clear_auth_cookies
 
 
 class LoginView(APIView):
@@ -121,8 +122,12 @@ class UserListView(APIView):
 class DiagnosticLoginView(APIView):
     """
     Staff-only endpoint. Creates a short-lived exchange code that can be used
-    to open the customer frontend in a new tab as a specific customer, while
-    retaining the staff identity for audit/logging purposes.
+    to open the customer frontend in a new tab as a specific customer.
+
+    The staff member's own access token is stored alongside the customer
+    tokens so that the customer frontend can set both as session cookies.
+    This allows the backend to identify which staff member initiated the
+    session on every subsequent request.
     """
     permission_classes = [IsAdminUser]
 
@@ -142,12 +147,18 @@ class DiagnosticLoginView(APIView):
         # Generate tokens for the customer
         customer_tokens = get_tokens_for_user(customer)
 
+        # Capture the staff member's current access token from their cookie.
+        # This will be stored in the exchange record and later set as a
+        # session cookie on the customer frontend for audit purposes.
+        staff_access_token = request.COOKIES.get(settings.ACCESS_TOKEN_COOKIE, '')
+
         # Store a short-lived exchange code
         exchange = DiagnosticExchangeCode.objects.create(
             staff_user=request.user,
             customer_user=customer,
             customer_access_token=customer_tokens['access'],
             customer_refresh_token=customer_tokens['refresh'],
+            staff_access_token=staff_access_token,
         )
 
         return Response({
@@ -158,9 +169,16 @@ class DiagnosticLoginView(APIView):
 
 class ExchangeCodeView(APIView):
     """
-    Exchange a one-time diagnostic code for customer JWT cookies.
-    The response body also includes the staff user's info so the customer
-    frontend can display a diagnostic banner.
+    Exchange a one-time diagnostic code for session-scoped JWT cookies.
+
+    Sets three session cookies (no max_age — expire when the browser tab
+    closes):
+    * ``access_token``       — customer JWT (used by DRF for auth)
+    * ``refresh_token``      — customer refresh JWT
+    * ``staff_access_token`` — the initiating staff member's JWT
+
+    The response body includes both user objects so the frontend can display
+    a diagnostic banner.
     """
     permission_classes = [AllowAny]
 
@@ -195,9 +213,49 @@ class ExchangeCodeView(APIView):
             'staff': UserSerializer(exchange.staff_user).data,
             'diagnostic': True,
         })
-        set_auth_cookies(
+        # Use session cookies (no max_age) — the diagnostic session ends
+        # when the browser tab is closed.
+        set_diagnostic_cookies(
             response,
             exchange.customer_access_token,
             exchange.customer_refresh_token,
+            exchange.staff_access_token,
         )
         return response
+
+
+class DiagnosticInfoView(APIView):
+    """
+    Returns the staff member's info for the current diagnostic session.
+
+    Reads the ``staff_access_token`` session cookie, validates the JWT, and
+    returns the staff user's profile.  Returns 404 when no diagnostic session
+    is active (i.e. the cookie is absent or invalid).
+
+    Used by the customer frontend to restore the diagnostic banner after a
+    page refresh within the same browser session.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        staff_token_str = request.COOKIES.get(settings.STAFF_ACCESS_TOKEN_COOKIE)
+        if not staff_token_str:
+            return Response(
+                {'detail': 'No active diagnostic session.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        auth = JWTAuthentication()
+        try:
+            validated_token = auth.get_validated_token(staff_token_str)
+            staff_user = auth.get_user(validated_token)
+        except (TokenError, InvalidToken, Exception):
+            return Response(
+                {'detail': 'No active diagnostic session.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response({
+            'staff': UserSerializer(staff_user).data,
+            'diagnostic': True,
+        })

@@ -100,6 +100,8 @@ SIMPLE_JWT = {
 # Cookie settings
 ACCESS_TOKEN_COOKIE = 'access_token'
 REFRESH_TOKEN_COOKIE = 'refresh_token'
+# Cookie set during a diagnostic session to carry the staff member's identity
+STAFF_ACCESS_TOKEN_COOKIE = 'staff_access_token'
 COOKIE_HTTPONLY = True
 COOKIE_SAMESITE = 'Lax'
 COOKIE_SECURE = False  # Set to True in production with HTTPS
