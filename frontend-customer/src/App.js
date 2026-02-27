@@ -1,0 +1,82 @@
+import React, { useState, useEffect } from 'react';
+import Login from './components/Login';
+import Dashboard from './components/Dashboard';
+import { getMe, refreshToken, exchangeDiagnosticCode } from './api';
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [staff, setStaff] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [exchangeError, setExchangeError] = useState('');
+
+  useEffect(() => {
+    async function init() {
+      // Check for a diagnostic exchange code in the URL
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+
+      if (code) {
+        // Remove the code from the URL immediately (security hygiene)
+        window.history.replaceState({}, document.title, window.location.pathname);
+        try {
+          const data = await exchangeDiagnosticCode(code);
+          setUser(data.customer);
+          setStaff(data.staff);
+          setLoading(false);
+          return;
+        } catch (err) {
+          setExchangeError(err.message);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Normal session restore flow
+      let me = await getMe();
+      if (!me) {
+        const refreshed = await refreshToken();
+        if (refreshed) {
+          me = await getMe();
+        }
+      }
+      setUser(me);
+      setLoading(false);
+    }
+    init();
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <span style={{ color: '#888', fontSize: 16 }}>Loading…</span>
+      </div>
+    );
+  }
+
+  if (exchangeError) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', flexDirection: 'column', gap: 12 }}>
+        <div style={{ fontSize: 40 }}>⚠️</div>
+        <div style={{ color: '#c62828', fontSize: 16 }}>{exchangeError}</div>
+        <button
+          style={{ marginTop: 8, padding: '8px 20px', cursor: 'pointer' }}
+          onClick={() => setExchangeError('')}
+        >
+          Go to login
+        </button>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login onLogin={(u) => { setUser(u); setStaff(null); }} />;
+  }
+
+  return (
+    <Dashboard
+      user={user}
+      staff={staff}
+      onLogout={() => { setUser(null); setStaff(null); }}
+    />
+  );
+}
