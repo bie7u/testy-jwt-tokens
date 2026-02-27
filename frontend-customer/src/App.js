@@ -34,6 +34,10 @@ export default function App() {
         codeExchangeStarted = true;
         try {
           const data = await exchangeDiagnosticCode(code);
+          // Mark this tab as having an active session.  sessionStorage is
+          // cleared when the tab closes, so a freshly opened tab will always
+          // require re-login (tab-scoped session behaviour).
+          sessionStorage.setItem('tabSession', '1');
           setUser(data.customer);
           setStaff(data.staff);
           setLoading(false);
@@ -49,6 +53,14 @@ export default function App() {
       // React StrictMode re-running the effect), skip the normal flow so we
       // don't race against the exchange and accidentally clear the user.
       if (codeExchangeStarted) {
+        return;
+      }
+
+      // Tab-scoped session: sessionStorage is cleared when the tab closes, so
+      // if there is no marker the user must log in again (even if auth cookies
+      // are still present from a previous tab or browser session).
+      if (!sessionStorage.getItem('tabSession')) {
+        setLoading(false);
         return;
       }
 

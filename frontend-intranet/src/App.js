@@ -10,6 +10,13 @@ export default function App() {
   useEffect(() => {
     // Try to restore session on page load
     async function restoreSession() {
+      // Tab-scoped session: sessionStorage is cleared when the tab closes, so
+      // if there is no marker the user must log in again (even if auth cookies
+      // are still present from a previous tab or browser session).
+      if (!sessionStorage.getItem('tabSession')) {
+        setLoading(false);
+        return;
+      }
       let me = await getMe();
       if (!me) {
         // Try refresh once

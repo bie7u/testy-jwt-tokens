@@ -63,6 +63,7 @@ export default function Login({ onLogin }) {
     setLoading(true);
     try {
       const data = await login(username, password);
+      sessionStorage.setItem('tabSession', '1');
       onLogin(data.user, null);
     } catch (err) {
       setError(err.message);
