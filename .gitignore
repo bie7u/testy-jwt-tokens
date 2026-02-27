@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.so
+.eggs/
+
+# Django
+*.sqlite3
+backend/staticfiles/
+backend/media/
+
+# Node / React
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+frontend-intranet/node_modules/
+frontend-intranet/build/
+frontend-customer/node_modules/
+frontend-customer/build/
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.DS_Store
+
+# Docker
+.dockerignore
