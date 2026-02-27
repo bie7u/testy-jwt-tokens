@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 import uuid
 
 
@@ -9,8 +10,12 @@ class DiagnosticExchangeCode(models.Model):
     as a customer for diagnostic purposes.
     """
     code = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    staff_user_id = models.IntegerField()
-    customer_user_id = models.IntegerField()
+    staff_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='diagnostic_codes_issued'
+    )
+    customer_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='diagnostic_codes_received'
+    )
     customer_access_token = models.TextField()
     customer_refresh_token = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)

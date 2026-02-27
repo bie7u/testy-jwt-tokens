@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { getCustomers, diagnosticLogin, logout } from '../api';
 
-// URL of the customer frontend
-const CUSTOMER_FRONTEND_URL = 'http://localhost:3002';
+// URL of the customer frontend — configurable via environment variable
+const CUSTOMER_FRONTEND_URL = process.env.REACT_APP_CUSTOMER_FRONTEND_URL || 'http://localhost:3002';
 
 const styles = {
   page: { minHeight: '100vh', background: '#f0f2f5' },

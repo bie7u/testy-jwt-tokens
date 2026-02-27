@@ -1,10 +1,12 @@
 /**
  * API service for the Intranet frontend.
  * All requests are sent with credentials (cookies) included.
- * The proxy in package.json routes /api/* to http://localhost:8000.
+ * In development, the Create React App proxy (package.json "proxy" field)
+ * forwards /api/* to the backend. In production, set REACT_APP_API_URL
+ * to the backend origin (e.g. http://localhost:8000).
  */
 
-const API_BASE = '/api/auth';
+const API_BASE = (process.env.REACT_APP_API_URL || '') + '/api/auth';
 
 async function request(method, path, body = null) {
   const options = {

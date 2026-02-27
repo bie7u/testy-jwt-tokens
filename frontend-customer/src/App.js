@@ -39,6 +39,10 @@ export default function App() {
           me = await getMe();
         }
       }
+      // Customer portal: reject staff users silently (force re-login)
+      if (me && me.is_staff) {
+        me = null;
+      }
       setUser(me);
       setLoading(false);
     }

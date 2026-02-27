@@ -81,6 +81,10 @@ class RefreshTokenView(APIView):
             access_token = str(token.access_token)
 
             if settings.SIMPLE_JWT.get('ROTATE_REFRESH_TOKENS', False):
+                # Generate a new JTI and expiry for proper rotation
+                # (mirrors what simplejwt's TokenRefreshSerializer does)
+                token.set_jti()
+                token.set_exp()
                 new_refresh_token = str(token)
             else:
                 new_refresh_token = refresh_token
@@ -139,8 +143,8 @@ class DiagnosticLoginView(APIView):
 
         # Store a short-lived exchange code
         exchange = DiagnosticExchangeCode.objects.create(
-            staff_user_id=request.user.id,
-            customer_user_id=customer.id,
+            staff_user=request.user,
+            customer_user=customer,
             customer_access_token=customer_tokens['access'],
             customer_refresh_token=customer_tokens['refresh'],
         )
@@ -186,18 +190,9 @@ class ExchangeCodeView(APIView):
         exchange.used = True
         exchange.save()
 
-        try:
-            customer = User.objects.get(id=exchange.customer_user_id)
-            staff_user = User.objects.get(id=exchange.staff_user_id)
-        except User.DoesNotExist:
-            return Response(
-                {'detail': 'User not found.'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
         response = Response({
-            'customer': UserSerializer(customer).data,
-            'staff': UserSerializer(staff_user).data,
+            'customer': UserSerializer(exchange.customer_user).data,
+            'staff': UserSerializer(exchange.staff_user).data,
             'diagnostic': True,
         })
         set_auth_cookies(
