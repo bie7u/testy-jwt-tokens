@@ -99,12 +99,21 @@ export default function Dashboard({ user, onLogout }) {
 
   const handleDiagnosticLogin = async (customer) => {
     setDiagLoading(customer.id);
+    // Open the window synchronously while still inside the user-gesture call
+    // stack so that popup blockers (e.g. Firefox) don't block it.  We
+    // navigate it to the real URL once the API call returns.
+    const win = window.open('', '_blank');
     try {
       const data = await diagnosticLogin(customer.id);
       const url = `${CUSTOMER_FRONTEND_URL}/?code=${data.code}`;
-      window.open(url, '_blank');
+      if (win) {
+        win.location.href = url;
+      } else {
+        window.open(url, '_blank');
+      }
       showToast(`Opened diagnostic session for ${customer.username}`);
     } catch (err) {
+      if (win) win.close();
       setError(err.message);
     } finally {
       setDiagLoading(null);
