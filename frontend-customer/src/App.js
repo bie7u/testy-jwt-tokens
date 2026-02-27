@@ -1,21 +1,26 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import { getMe, refreshToken, exchangeDiagnosticCode, getDiagnosticInfo } from './api';
+
+// Module-level flag that survives React StrictMode's simulated
+// unmount → remount cycle (unlike useRef, which is tied to the component
+// instance and may be re-initialised on remount).  The flag is reset to
+// false on every real page load because module scope is re-evaluated then.
+//
+// Purpose: React 18 StrictMode double-fires useEffect in development.
+// Without this guard the second invocation would run the normal session
+// restore flow with the staff member's still-active cookies, call
+// setUser(null) after the is_staff check, and overwrite the customer user
+// that the first invocation set — leaving the staff member stuck on the
+// login page instead of the customer portal.
+let codeExchangeStarted = false;
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [staff, setStaff] = useState(null);
   const [loading, setLoading] = useState(true);
   const [exchangeError, setExchangeError] = useState('');
-  // Tracks whether an exchange-code flow was started in a previous effect
-  // invocation (React StrictMode double-fires effects in development).
-  // Without this guard the second invocation would run the normal session
-  // restore flow with the staff member's still-active cookies, call
-  // setUser(null) after the is_staff check, and overwrite the customer user
-  // that the first invocation set — leaving the staff member stuck on the
-  // login page instead of the customer portal.
-  const codeExchanged = useRef(false);
 
   useEffect(() => {
     async function init() {
@@ -26,7 +31,7 @@ export default function App() {
       if (code) {
         // Remove the code from the URL immediately (security hygiene)
         window.history.replaceState({}, document.title, window.location.pathname);
-        codeExchanged.current = true;
+        codeExchangeStarted = true;
         try {
           const data = await exchangeDiagnosticCode(code);
           setUser(data.customer);
@@ -43,7 +48,7 @@ export default function App() {
       // If a previous effect invocation already started an exchange (e.g.
       // React StrictMode re-running the effect), skip the normal flow so we
       // don't race against the exchange and accidentally clear the user.
-      if (codeExchanged.current) {
+      if (codeExchangeStarted) {
         return;
       }
 
