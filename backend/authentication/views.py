@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
 
@@ -175,20 +176,19 @@ class ExchangeCodeView(APIView):
         cutoff = timezone.now() - expiry_delta
 
         try:
-            exchange = DiagnosticExchangeCode.objects.get(
-                code=code,
-                used=False,
-                created_at__gte=cutoff,
-            )
+            with transaction.atomic():
+                exchange = DiagnosticExchangeCode.objects.select_for_update().get(
+                    code=code,
+                    used=False,
+                    created_at__gte=cutoff,
+                )
+                exchange.used = True
+                exchange.save()
         except DiagnosticExchangeCode.DoesNotExist:
             return Response(
                 {'detail': 'Invalid or expired exchange code.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        # Mark the code as used (one-time use)
-        exchange.used = True
-        exchange.save()
 
         response = Response({
             'customer': UserSerializer(exchange.customer_user).data,
