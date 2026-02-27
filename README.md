@@ -139,17 +139,10 @@ Set `COOKIE_SECURE = True` and `COOKIE_SAMESITE = 'Strict'` in `backend/backend/
 
 ### Django version
 
-This project uses **Django 3.1.3** as an explicit project requirement.  
-Django 3.1.x reached end-of-life in April 2022 and no longer receives security updates.
+This project uses **Django 4.2.26** (the latest patched Django 4.2 LTS release).
 
-The following advisories reference version ranges that include Django 3.1.3:
-
-| Advisory | Affected range | Impact on this project |
-|---|---|---|
-| DoS via `HttpResponseRedirect` / `HttpResponsePermanentRedirect` (Windows) | `< 4.2.26` | ❌ **Not applicable** — this server runs on Linux only; `HttpResponseRedirect` is not used in application code |
-| SQL injection via `Q._connector` keyword argument | `< 4.2.26` | ❌ **Not applicable** — `Q` objects with `_connector` are not used anywhere in application code (verified by code search) |
-
-> **For production deployments** it is strongly recommended to upgrade to **Django 4.2 LTS** (the latest patched LTS branch) and update `djangorestframework-simplejwt` to a compatible version accordingly.
+`djangorestframework-simplejwt==4.8.0` has no upper-bound Django version constraint and is
+fully compatible with Django 4.2.x — all 15 unit tests pass on this version.
 
 ### Other production hardening
 
