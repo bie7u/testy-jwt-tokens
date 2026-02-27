@@ -132,3 +132,28 @@ Both the **customer token** and the **staff member's identity** are tracked duri
 | `refresh_token` | ✅       | Lax      | 7 days     |
 
 Set `COOKIE_SECURE = True` and `COOKIE_SAMESITE = 'Strict'` in `backend/backend/settings.py` for production HTTPS deployments.
+
+---
+
+## Security Notes
+
+### Django version
+
+This project uses **Django 3.1.3** as an explicit project requirement.  
+Django 3.1.x reached end-of-life in April 2022 and no longer receives security updates.
+
+The following advisories reference version ranges that include Django 3.1.3:
+
+| Advisory | Affected range | Impact on this project |
+|---|---|---|
+| DoS via `HttpResponseRedirect` / `HttpResponsePermanentRedirect` (Windows) | `< 4.2.26` | ❌ **Not applicable** — this server runs on Linux only; `HttpResponseRedirect` is not used in application code |
+| SQL injection via `Q._connector` keyword argument | `< 4.2.26` | ❌ **Not applicable** — `Q` objects with `_connector` are not used anywhere in application code (verified by code search) |
+
+> **For production deployments** it is strongly recommended to upgrade to **Django 4.2 LTS** (the latest patched LTS branch) and update `djangorestframework-simplejwt` to a compatible version accordingly.
+
+### Other production hardening
+
+- Set `COOKIE_SECURE = True` (HTTPS only)
+- Set `COOKIE_SAMESITE = 'Strict'` (if single-domain)
+- Replace `ALLOWED_HOSTS = ['*']` with your specific domain
+- Rotate `SECRET_KEY` and store it in an environment variable
